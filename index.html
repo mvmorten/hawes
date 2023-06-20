@@ -1,8 +1,234 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
-<body>
+<head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+        integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+        crossorigin="" />
 
-  <h1>hi</h1>
+  <style>
+    /*  body {
+                                padding: 0;
+                                margin: 0;
+                            }
+
+                            html, body, #mapid {
+                                height: 100%;
+                                width: 100vw;
+                            }*/
+
+    #mapid {
+      height: 100%;
+      width: 100vw;
+    }
+
+    #findMe {
+      margin-right: 10px;
+      margin-top: 10px;
+    }
+
+    html,
+    body,
+    object {
+      height: 100%;
+      width: 100%;
+      margin: 0px;
+      padding: 0px;
+    }
+
+    div {
+      margin: 0px;
+      padding: 0px;
+    }
+
+    #mainContainer {
+      position: relative;
+      height: 100%;
+      width: 100%;
+    }
+
+    #topContainer {
+      /*border: 1px solid red;*/
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      bottom: 50px;
+      height: calc(100% - 100);
+      width: 100%;
+    }
+
+    #bottomContainer {
+      /*border: 1px solid blue;*/
+      position: absolute;
+      bottom: 0px;
+      left: 0px;
+      height: 50px;
+      width: 100%;
+    }
+  </style>
+  <title>hawes</title>
+</head>
+<body>
+  <div id="mainContainer">
+    <div id="topContainer">
+      <div id="mapid">
+        <div class="btn-group float-right" style="z-index: 1001">
+          <button type="button" id="findMe" class="btn btn-primary"> <i class="fa fa-location-arrow"></i></button>
+        </div>
+      </div>
+    </div>
+    <div id="bottomContainer">
+      <div class="container">
+        <h2 id="trailName"></h2>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+          integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+          crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js" integrity="sha512-8BqQ2RH4L4sQhV41ZB24fUc1nGcjmrTA6DILV/aTPYuUzo+wBdYdp0fvQ76Sxgf36p787CXF7TktWlcxu/zyOg==" crossorigin="anonymous"></script>
+  <script src="https://npmcdn.com/leaflet-geometryutil"></script>
+
+  <script type="text/javascript">
+
+    var gpxs = [];
+    gpxs = ['Big-Sister.json'];
+
+    //@foreach (var g in ViewBag.Gpxs)
+    //{
+    //  @:gpxs.push("@g");
+    //}
+
+  </script>
+
+  <script>
+
+    var map, marker, polylines, closestLayer, stuff;
+
+    function onLocationFound(e) {
+      if (marker) {
+        marker.setLatLng([e.latitude, e.longitude]);
+      }
+      else {
+        marker = L.marker(e.latlng).addTo(map);
+      }
+      if (closestLayer) {
+        closestLayer.layer.setStyle({
+          color: 'blue',
+          opacity: 0.05,
+          weight: 10
+        })
+      }
+
+      closestLayer = L.GeometryUtil.closestLayer(map, stuff, marker.getLatLng());
+      if (closestLayer) {
+        $("#trailName").html(closestLayer.layer.options.trail_name);
+        closestLayer.layer.setStyle({
+          color: 'blue',
+          opacity: 0.1,
+          weight: 10
+        });
+      }
+      else {
+        $("#trailName").html("");
+      }
+    }
+
+    //function onLocationError(e) {
+    //  console.error(e.message);
+    //}
+
+    $(document).ready(function () {
+
+      stuff = [];
+
+      polylines = new L.FeatureGroup();
+
+      map = L.map('mapid').setView([33.495240, -111.667532], 12);
+      L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        minZoom: 12,
+        maxZoom: 18,
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1,
+        accessToken: 'pk.eyJ1IjoibXZtb3J0ZW4iLCJhIjoiY2tmNW01bWZnMG9mdzMxbXNpeW8zYzB6MyJ9.Ue0diEKCCrJJxipWgK5MyA'
+      }).addTo(map);
+
+      map.on('locationfound', onLocationFound);
+      map.locate({ setView: false, watch: true, maxZoom: 18, maximumAge: 5000, enableHighAccuracy: true });
+
+      $("#findMe").click(function () {
+        //map.locate({ setView: true });
+        if (marker) {
+          map.setView(marker.getLatLng());
+        }
+      });
+
+      var lastClick = 0;
+
+      $.each(gpxs, function (index, value) {
+        var trail_name = value.replaceAll("-", " ");
+        $.get("/gpx/" + value + ".json", function (data) {
+          var latlngs = [];
+          latlngs = data;
+
+          if (!Array.isArray(latlngs) || !latlngs.length) {
+            // array does not exist, is not an array, or is empty
+            // ⇒ do not attempt to process array
+          }
+          else {
+
+            var polyline = L.polyline(latlngs, { color: 'blue', opacity: 0.05, weight: 10, className: trail_name, trail_name: trail_name }).addTo(map);
+            stuff.push(polyline);
+
+            //polyline.on(
+            //  'click',
+            //  function () {
+            //    if (lastClick >= (Date.now() + 20)) {
+            //      return;
+            //    }
+            //    lastClick = Date.now();
+            //    console.log(value);
+            //    $("#info").html(trail_name);
+            //    $("#info").show();
+            //  });
+
+            //polyline.on('mouseover', function (e) {
+            //  var layer = e.target;
+            //  layer.setStyle({
+            //    color: 'blue',
+            //    opacity: 0.8,
+            //    weight: 8
+            //  });
+            //  $("#info").html(value.replaceAll("-", " "));
+            //  $("#info").show();
+            //});
+
+            //polyline.on('mouseout', function (e) {
+            //  var layer = e.target;
+            //  layer.setStyle({
+            //    color: 'blue',
+            //    opacity: 1,
+            //    weight: 4
+            //  });
+            //    $("#info").html("");
+            //    $("#info").hide();
+            //});
+
+            polyline.addTo(polylines);
+            // zoom the map to the polyline
+            //map.fitBounds(polyline.getBounds());
+          }
+
+        });
+
+      });
+
+
+    });
+  </script>
 
 </body>
 </html>
